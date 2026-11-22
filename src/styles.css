@@ -209,6 +209,26 @@ select {
   font-size: 11.5px;
 }
 
+.cat-group h3 {
+  font-size: 11.5px;
+  font-weight: 600;
+  color: var(--muted);
+  margin: 10px 0 6px;
+}
+.cat-group:first-of-type h3 {
+  margin-top: 0;
+}
+.import-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  margin-top: 12px;
+}
+.import-btn svg {
+  width: 20px;
+  height: 20px;
+}
 .catalog {
   display: grid;
   grid-template-columns: repeat(4, 1fr);
@@ -663,6 +683,26 @@ select {
 }
 .plan-item.curtain {
   fill: rgb(214 196 176 / 0.5);
+}
+.plan-item.rug {
+  fill: rgb(214 196 176 / 0.35);
+  stroke-dasharray: 0.04 0.03;
+}
+.plan-item.decor {
+  fill: #2b2b2d;
+}
+.plan-door .door-gap {
+  fill: #faf9f7;
+  stroke: none;
+}
+.plan-door path {
+  fill: none;
+  stroke: #8b8178;
+  stroke-width: 0.015;
+}
+.plan-door.on path {
+  stroke: var(--accent);
+  stroke-width: 0.03;
 }
 .plan-item.on {
   stroke: var(--accent);

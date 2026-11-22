@@ -2,7 +2,7 @@ import { create } from 'zustand';
 import { uid } from './catalog';
 import { autoLayout, designFromPreset, PRESETS } from './layout';
 import { findSpot, reflowAll } from './placement';
-import type { Design, ItemType, Lang } from './types';
+import type { Design, Item, ItemParams, ItemType, Lang } from './types';
 
 const KEY = 'roomcraft-design-v1';
 
@@ -46,7 +46,7 @@ interface State {
   setBusy: (b: boolean) => void;
   setModal: (m: State['modal']) => void;
   resetCamera: () => void;
-  addItem: (t: ItemType) => void;
+  addItem: (t: ItemType, over?: Partial<Item>, p?: ItemParams) => void;
   removeSelected: () => void;
   duplicateSelected: () => void;
   applyPreset: (id: string) => void;
@@ -93,10 +93,10 @@ export const useStore = create<State>()((set, get) => ({
   setModal: (modal) => set({ modal }),
   resetCamera: () => set((s) => ({ camKey: s.camKey + 1 })),
 
-  addItem: (t) => {
+  addItem: (t, over, p) => {
     let id = '';
     get().update((d) => {
-      const it = findSpot(t, d);
+      const it = findSpot(t, d, over, p);
       id = it.id;
       d.items.push(it);
     });

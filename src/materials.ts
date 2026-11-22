@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { fluteNormal, getTexture, skyTexture, type TexKind } from './textures';
+import { fluteNormal, getTexture, hobTexture, rugTexture, screenTexture, skyTexture, type TexKind } from './textures';
 
 export interface Named {
   id: string;
@@ -81,6 +81,20 @@ export const FABRICS: FabricDef[] = [
 ];
 
 export const WALL_COLORS = ['#f3f1ec', '#e9e1d4', '#dbdbd7', '#c8d0c1', '#d7b8a2', '#b8c3cb'];
+
+export interface SplashDef extends Named {
+  tex?: TexKind;
+  rough: number;
+  /** SGD per m² */
+  rate: number;
+}
+
+export const BACKSPLASHES: SplashDef[] = [
+  { id: 'subway', zh: '白色地铁砖', en: 'White subway tile', tex: 'subway', rough: 0.15, rate: 120 },
+  { id: 'zellige', zh: '绿色手工砖', en: 'Green zellige', tex: 'zellige', rough: 0.12, rate: 180 },
+  { id: 'marble', zh: '大理石背板', en: 'Marble slab', tex: 'marble', rough: 0.2, rate: 260 },
+  { id: 'none', zh: '不做背板', en: 'None', rough: 1, rate: 0 },
+];
 
 export function findById<T extends Named>(list: T[], id: string | undefined): T {
   return list.find((x) => x.id === id) ?? list[0];
@@ -197,4 +211,44 @@ export function kelvin(k: number): THREE.Color {
   }
   const c = (v: number) => Math.min(255, Math.max(0, v)) / 255;
   return new THREE.Color().setRGB(c(r), c(g), c(b), THREE.SRGBColorSpace);
+}
+
+export function splashMat(id: string | undefined) {
+  return cached(`splash:${id}`, () => {
+    const s = findById(BACKSPLASHES, id);
+    return new THREE.MeshPhysicalMaterial({ map: s.tex ? getTexture(s.tex) : null, roughness: s.rough, clearcoat: 0.5, clearcoatRoughness: 0.1 });
+  });
+}
+
+export function hobMat() {
+  return cached('hob', () => new THREE.MeshPhysicalMaterial({ map: hobTexture(), roughness: 0.08, clearcoat: 1, clearcoatRoughness: 0.05 }));
+}
+
+export function rugMat(id: string | undefined) {
+  const f = findById(FABRICS, id);
+  return cached(`rug:${f.id}`, () => new THREE.MeshStandardMaterial({ map: rugTexture(f.color), roughness: 1 }));
+}
+
+export function screenMat(on: boolean) {
+  return cached(`screen:${on}`, () =>
+    on
+      ? new THREE.MeshStandardMaterial({ color: '#000000', emissive: '#ffffff', emissiveMap: screenTexture(), emissiveIntensity: 0.9, roughness: 0.2 })
+      : new THREE.MeshPhysicalMaterial({ color: '#0b0b0c', roughness: 0.1, clearcoat: 1 }),
+  );
+}
+
+/** Upholstery: the fabric colour, optionally with channel tufting from the flute normal map. */
+export function upholsteryMat(id: string | undefined, channels = false) {
+  return cached(`uph:${id}:${channels}`, () => {
+    const f = findById(FABRICS, id);
+    return new THREE.MeshPhysicalMaterial({
+      color: f.color,
+      roughness: 0.92,
+      sheen: 0.7,
+      sheenRoughness: 0.7,
+      sheenColor: new THREE.Color('#ffffff'),
+      normalMap: channels ? fluteNormal() : null,
+      normalScale: new THREE.Vector2(2.2, 2.2),
+    });
+  });
 }

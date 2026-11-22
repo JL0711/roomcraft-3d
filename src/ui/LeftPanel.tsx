@@ -1,8 +1,9 @@
-import { CATALOG, CATALOG_ORDER } from '../catalog';
+import { CATALOG, CATALOG_GROUPS } from '../catalog';
 import { area } from '../geometry';
 import { nameOf, useT } from '../i18n';
 import { PRESETS } from '../layout';
-import { FLOORS, WALL_COLORS } from '../materials';
+import { BACKSPLASHES, FLOORS, WALL_COLORS } from '../materials';
+import { importModelFile } from '../scene/imported';
 import { reflowAll } from '../placement';
 import { useStore } from '../store';
 import { getTexture, type TexKind } from '../textures';
@@ -31,20 +32,46 @@ export function LeftPanel() {
   const night = useStore((s) => s.night);
   const { addItem, update, applyPreset, runAutoLayout, setNight } = useStore.getState();
   const presetId = PRESETS.find((p) => p.roomType === design.roomType)?.id;
+  const importGLB = () => {
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.accept = '.glb,.gltf,model/gltf-binary';
+    input.onchange = async () => {
+      const f = input.files?.[0];
+      if (!f) return;
+      try {
+        const m = await importModelFile(f);
+        const r = (v: number) => Math.round(v * 1000) / 1000;
+        addItem('model', { w: r(m.size.x), h: r(m.size.y), d: r(m.size.z) }, { modelId: m.id, modelName: m.name });
+      } catch {
+        alert(t('importFail'));
+      }
+    };
+    input.click();
+  };
 
   return (
     <aside className="panel left">
       <section>
         <h2>{t('addModule')}</h2>
-        <div className="catalog">
-          {CATALOG_ORDER.map((type) => (
-            <button key={type} type="button" className="module-btn" onClick={() => addItem(type)}>
-              <ModuleIcon type={type} />
-              <span>{nameOf(lang, CATALOG[type])}</span>
-            </button>
-          ))}
-        </div>
+        {CATALOG_GROUPS.map((g) => (
+          <div key={g.zh} className="cat-group">
+            <h3>{nameOf(lang, g)}</h3>
+            <div className="catalog">
+              {g.entries.map((e, i) => (
+                <button key={i} type="button" className="module-btn" onClick={() => addItem(e.type, e.over, e.p)}>
+                  <ModuleIcon type={e.type} />
+                  <span>{e.zh ? nameOf(lang, { zh: e.zh, en: e.en ?? e.zh }) : nameOf(lang, CATALOG[e.type])}</span>
+                </button>
+              ))}
+            </div>
+          </div>
+        ))}
+        <button type="button" className="btn block import-btn" onClick={importGLB}>
+          <ModuleIcon type="model" /> {t('importModel')}
+        </button>
         <p className="hint">{t('addHint')}</p>
+        <p className="hint">{t('importHint')}</p>
       </section>
 
       <section>
@@ -118,6 +145,20 @@ export function LeftPanel() {
             />
           </div>
         </Row>
+        {(design.roomType === 'kitchen' || design.items.some((i) => i.type === 'base' && i.wall !== null)) && (
+          <Row label={t('backsplash')}>
+            <Swatches
+              value={design.backsplash ?? 'subway'}
+              options={BACKSPLASHES.map((b) => ({
+                id: b.id,
+                label: nameOf(lang, b),
+                image: b.tex ? texThumb(b.tex) : undefined,
+                color: b.tex ? undefined : 'repeating-linear-gradient(45deg,#fff 0 4px,#ddd 4px 8px)',
+              }))}
+              onChange={(id) => update((d) => void (d.backsplash = id))}
+            />
+          </Row>
+        )}
         <Row label={t('lighting')}>
           <Segmented<string>
             value={night ? 'night' : 'day'}

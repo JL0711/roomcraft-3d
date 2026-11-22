@@ -1,6 +1,6 @@
-import { CATALOG, itemSpan, itemWidth, newItem, type Layer } from './catalog';
-import { centroid, clamp, nearestWall, pointInPoly, projectOnWall, wallsOf, type Wall } from './geometry';
-import type { Design, Item, ItemType, Vec2 } from './types';
+import { CATALOG, itemDepth, itemSpan, itemWidth, newItem, NO_COLLIDE, type Layer } from './catalog';
+import { centroid, clamp, nearestWall, pointInPoly, projectOnWall, wallsOf, WALL_T, type Wall } from './geometry';
+import type { Design, Item, ItemParams, ItemType, Vec2 } from './types';
 
 const SNAP_DIST = 0.08;
 const layerOf = (it: Item): Layer => CATALOG[it.type].layer;
@@ -39,7 +39,8 @@ export function placeOnWall(it: Item, w: Wall, t: number, all: Item[]): Placemen
     }
   }
   tc = snapped;
-  const off = it.d / 2 + 0.002;
+  // doors and windows sit inside the wall thickness; everything else stands in front of it
+  const off = my === 'opening' ? -WALL_T / 2 : it.d / 2 + 0.002;
   return {
     x: w.a.x + w.dir.x * tc + w.nIn.x * off,
     z: w.a.z + w.dir.z * tc + w.nIn.z * off,
@@ -55,8 +56,11 @@ export function place(it: Item, target: Vec2, d: Design): Placement | null {
   if (c.snap === 'ceiling') {
     return pointInPoly(target, d.plan) ? { x: target.x, z: target.z, rot: it.rot, wall: null } : null;
   }
+  if (c.snap === 'floor') {
+    return pointInPoly(target, d.plan) ? { x: target.x, z: target.z, rot: it.rot, wall: null } : null;
+  }
   const nw = nearestWall(target, walls);
-  if (c.snap === 'free' && nw.dist > Math.max(0.75, it.d * 1.1)) {
+  if (c.snap === 'free' && nw.dist > it.d / 2 + 0.4) {
     return pointInPoly(target, d.plan) ? { x: target.x, z: target.z, rot: it.rot, wall: null } : null;
   }
   return placeOnWall(it, nw.wall, nw.t, d.items);
@@ -68,7 +72,7 @@ export function reflowItem(it: Item, d: Design) {
   if (it.wall !== null) {
     const nw = nearestWall(it, walls);
     Object.assign(it, placeOnWall(it, nw.wall, nw.t, d.items));
-  } else if (CATALOG[it.type].snap === 'ceiling' && !pointInPoly(it, d.plan)) {
+  } else if ((CATALOG[it.type].snap === 'ceiling' || CATALOG[it.type].snap === 'floor') && !pointInPoly(it, d.plan)) {
     Object.assign(it, centroid(d.plan));
   }
 }
@@ -78,9 +82,13 @@ export function reflowAll(d: Design) {
 }
 
 /** Finds a free spot for a newly added module: the widest gap on the longest walls. */
-export function findSpot(type: ItemType, d: Design): Item {
-  const it = newItem(type);
+export function findSpot(type: ItemType, d: Design, over: Partial<Item> = {}, p: ItemParams = {}): Item {
+  const it = newItem(type, over, p);
   const c = CATALOG[type];
+  if (c.snap === 'floor') {
+    Object.assign(it, centroid(d.plan));
+    return it;
+  }
   if (c.snap === 'ceiling') {
     const ctr = centroid(d.plan);
     const taken = d.items.filter((o) => CATALOG[o.type].layer === 'ceiling').length;
@@ -116,7 +124,7 @@ export function findSpot(type: ItemType, d: Design): Item {
 /** Corners of a module footprint on the floor plan. */
 export function footprint(it: Item): Vec2[] {
   const w = itemWidth(it) / 2;
-  const h = it.d / 2;
+  const h = itemDepth(it) / 2;
   const c = Math.cos(it.rot);
   const s = Math.sin(it.rot);
   // local x axis -> (cos, -sin); local z axis -> (sin, cos)
@@ -146,13 +154,13 @@ function overlap2D(a: Vec2[], b: Vec2[]) {
 /** True if a module collides with another one (same physical space, not just touching). */
 export function collides(it: Item, d: Design) {
   const my = CATALOG[it.type].layer;
-  if (my === 'curtain' || my === 'opening' || my === 'ceiling') return false;
+  if (NO_COLLIDE.includes(my)) return false;
   const [a0, a1] = itemSpan(it, d.wallH);
   const fa = footprint(it);
   return d.items.some((o) => {
     if (o.id === it.id) return false;
     const ol = CATALOG[o.type].layer;
-    if (ol === 'curtain' || ol === 'opening' || ol === 'ceiling') return false;
+    if (NO_COLLIDE.includes(ol)) return false;
     const [b0, b1] = itemSpan(o, d.wallH);
     if (a1 <= b0 + 1e-3 || b1 <= a0 + 1e-3) return false;
     return overlap2D(fa, footprint(o));

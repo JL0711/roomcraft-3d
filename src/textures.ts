@@ -14,7 +14,9 @@ export type TexKind =
   | 'concrete'
   | 'quartz'
   | 'marble'
-  | 'granite';
+  | 'granite'
+  | 'subway'
+  | 'zellige';
 
 export const TEX_SIZE: Record<TexKind, number> = {
   oak: 0.6,
@@ -26,6 +28,8 @@ export const TEX_SIZE: Record<TexKind, number> = {
   quartz: 0.5,
   marble: 1.0,
   granite: 0.4,
+  subway: 0.3,
+  zellige: 0.3,
 };
 
 function rand(seed: number) {
@@ -208,6 +212,31 @@ function draw(kind: TexKind): HTMLCanvasElement {
       speckle(ctx, N, 5000, ['#59585a', '#8b8a8c', '#3a3533', '#c9c7c5'], 0.4, 1.8, 0.35, 0.9, r);
       break;
     }
+    case 'subway':
+    case 'zellige': {
+      const zel = kind === 'zellige';
+      ctx.fillStyle = zel ? '#c9cfc6' : '#d6d2ca';
+      ctx.fillRect(0, 0, N, N);
+      const cols = zel ? 3 : 2;
+      const rows = zel ? 3 : 4;
+      const tw = N / cols;
+      const th = N / rows;
+      const g = 3;
+      for (let row = 0; row < rows; row++) {
+        const off = !zel && row % 2 ? tw / 2 : 0;
+        for (let c = -1; c <= cols; c++) {
+          const x = c * tw + off;
+          const tone = zel ? 0.78 + r() * 0.34 : 0.97 + r() * 0.05;
+          const base = zel ? '#4f7d6c' : '#f4f2ed';
+          const grd = ctx.createLinearGradient(x, row * th, x + tw, row * th + th);
+          grd.addColorStop(0, shade(base, tone * 1.04));
+          grd.addColorStop(1, shade(base, tone * (zel ? 0.9 : 0.98)));
+          ctx.fillStyle = grd;
+          ctx.fillRect(x + g / 2, row * th + g / 2, tw - g, th - g);
+        }
+      }
+      break;
+    }
     case 'marble': {
       ctx.fillStyle = '#f2f1ee';
       ctx.fillRect(0, 0, N, N);
@@ -325,6 +354,97 @@ export function skyTexture(night: boolean): THREE.Texture {
     t = new THREE.CanvasTexture(c);
     t.colorSpace = THREE.SRGBColorSpace;
     texCache.set(key, t);
+  }
+  return t;
+}
+
+/** Black-glass induction hob with four cooking zones. */
+export function hobTexture(): THREE.Texture {
+  let t = texCache.get('hob');
+  if (!t) {
+    const [c, ctx] = makeCanvas(512, 440);
+    ctx.fillStyle = '#0c0c0d';
+    ctx.fillRect(0, 0, 512, 440);
+    ctx.strokeStyle = 'rgba(200,200,205,0.55)';
+    const zones: [number, number, number][] = [
+      [140, 130, 92],
+      [380, 120, 70],
+      [140, 320, 70],
+      [370, 300, 100],
+    ];
+    for (const [x, y, rad] of zones) {
+      ctx.lineWidth = 3;
+      ctx.beginPath();
+      ctx.arc(x, y, rad, 0, Math.PI * 2);
+      ctx.stroke();
+      ctx.lineWidth = 1.5;
+      ctx.beginPath();
+      ctx.arc(x, y, rad * 0.72, 0, Math.PI * 2);
+      ctx.stroke();
+    }
+    ctx.fillStyle = 'rgba(230,230,235,0.6)';
+    for (let i = 0; i < 6; i++) ctx.fillRect(160 + i * 34, 412, 18, 4);
+    t = new THREE.CanvasTexture(c);
+    t.colorSpace = THREE.SRGBColorSpace;
+    texCache.set('hob', t);
+  }
+  return t;
+}
+
+/** A rug: wool texture in the fabric colour with a contrasting border. */
+export function rugTexture(color: string): THREE.Texture {
+  const key = `rug:${color}`;
+  let t = texCache.get(key);
+  if (!t) {
+    const [c, ctx] = makeCanvas(512);
+    const r = rand(color.length * 97 + color.charCodeAt(1));
+    ctx.fillStyle = color;
+    ctx.fillRect(0, 0, 512, 512);
+    speckle(ctx, 512, 7000, [shade(color, 0.94), shade(color, 1.05), shade(color, 0.98)], 0.5, 1.3, 0.25, 0.6, r);
+    ctx.strokeStyle = shade(color, 0.78);
+    ctx.lineWidth = 10;
+    ctx.strokeRect(34, 34, 444, 444);
+    ctx.lineWidth = 3;
+    ctx.strokeRect(58, 58, 396, 396);
+    t = new THREE.CanvasTexture(c);
+    t.colorSpace = THREE.SRGBColorSpace;
+    t.anisotropy = 8;
+    texCache.set(key, t);
+  }
+  return t;
+}
+
+/** Picture shown on the TV: a soft landscape at dusk. */
+export function screenTexture(): THREE.Texture {
+  let t = texCache.get('screen');
+  if (!t) {
+    const [c, ctx] = makeCanvas(512, 288);
+    const g = ctx.createLinearGradient(0, 0, 0, 288);
+    g.addColorStop(0, '#24345e');
+    g.addColorStop(0.55, '#e9927a');
+    g.addColorStop(1, '#f6d2a2');
+    ctx.fillStyle = g;
+    ctx.fillRect(0, 0, 512, 288);
+    ctx.fillStyle = 'rgba(255,236,200,0.9)';
+    ctx.beginPath();
+    ctx.arc(330, 170, 26, 0, Math.PI * 2);
+    ctx.fill();
+    const hills: [string, number, number][] = [
+      ['#5b4a6b', 180, 0.012],
+      ['#3e3452', 215, 0.018],
+      ['#2a2438', 245, 0.026],
+    ];
+    for (const [col, base, f] of hills) {
+      ctx.fillStyle = col;
+      ctx.beginPath();
+      ctx.moveTo(0, 288);
+      for (let x = 0; x <= 512; x += 8) ctx.lineTo(x, base - Math.sin(x * f + base) * 18 - Math.sin(x * f * 2.3) * 8);
+      ctx.lineTo(512, 288);
+      ctx.fill();
+    }
+    t = new THREE.CanvasTexture(c);
+    t.colorSpace = THREE.SRGBColorSpace;
+    texCache.set('screen', t);
   }
   return t;
 }

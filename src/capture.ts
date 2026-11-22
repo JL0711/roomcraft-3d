@@ -10,7 +10,11 @@ export const bridge: {
   solidWalls: boolean;
   /** when true, faded walls leave no outline (cleaner renders) */
   capturing: boolean;
-} = { gl: null, scene: null, camera: null, solidWalls: false, capturing: false };
+  setDpr: ((dpr: number) => void) | null;
+  /** current opacity of each wall (1 = solid, 0 = faded out for the cutaway) */
+  wallFade: number[];
+  controls: { target: THREE.Vector3; update: () => void } | null;
+} = { gl: null, scene: null, camera: null, solidWalls: false, capturing: false, setDpr: null, wallFade: [], controls: null };
 
 if (import.meta.env.DEV) (window as unknown as { __rc: typeof bridge }).__rc = bridge;
 
@@ -19,18 +23,21 @@ export async function frames(n: number) {
   for (let i = 0; i < n; i++) await nextFrame();
 }
 
-/** Renders the current view at about 4K and returns a JPEG data URL. */
-export function renderHD(targetWidth = 3840, mime = 'image/jpeg'): string {
-  const { gl, scene, camera } = bridge;
-  if (!gl || !scene || !camera) throw new Error('renderer not ready');
+/**
+ * Renders the current view at about 4K and returns a JPEG data URL. The
+ * pixel ratio is raised for a few frames so the normal render loop, with
+ * its ambient-occlusion and tone-mapping passes, produces the image.
+ */
+export async function renderHD(targetWidth = 3840, mime = 'image/jpeg'): Promise<string> {
+  const { gl, setDpr } = bridge;
+  if (!gl || !setDpr) throw new Error('renderer not ready');
   const prev = gl.getPixelRatio();
-  const size = gl.getSize(new THREE.Vector2());
-  const ratio = Math.min(4, Math.max(1, targetWidth / size.x));
-  gl.setPixelRatio(ratio);
-  gl.render(scene, camera);
+  const ratio = Math.min(4, Math.max(1, targetWidth / Math.max(1, gl.domElement.clientWidth)));
+  setDpr(ratio);
+  await frames(4);
   const url = gl.domElement.toDataURL(mime, 0.94);
-  gl.setPixelRatio(prev);
-  gl.render(scene, camera);
+  setDpr(prev);
+  await frames(1);
   return url;
 }
 

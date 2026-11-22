@@ -177,3 +177,41 @@ export function boxGeo(w: number, h: number, d: number) {
 export const snap = (v: number, step: number) => Math.round(v / step) * step;
 export const clamp = (v: number, a: number, b: number) => Math.min(b, Math.max(a, v));
 export const mm = (m: number) => Math.round(m * 1000);
+
+export interface SlabHole {
+  x: number;
+  y: number;
+  w: number;
+  d: number;
+}
+
+/**
+ * A horizontal slab (worktop) of `len` × `depth`, `thick` high, with
+ * rectangular cut-outs. Local frame: x along the length, z = depth (0 at the
+ * back), y from 0 (underside) to `thick` (top). UVs are in metres.
+ */
+export function slabGeo(len: number, depth: number, thick: number, holes: SlabHole[] = []) {
+  const v = (x: number, y: number) => new THREE.Vector2(x, y);
+  const s = new THREE.Shape([v(0, 0), v(len, 0), v(len, depth), v(0, depth)]);
+  for (const h of holes) {
+    const x0 = Math.max(0.03, h.x - h.w / 2);
+    const x1 = Math.min(len - 0.03, h.x + h.w / 2);
+    const y0 = Math.max(0.03, h.y - h.d / 2);
+    const y1 = Math.min(depth - 0.03, h.y + h.d / 2);
+    if (x1 - x0 > 0.05 && y1 - y0 > 0.05) s.holes.push(new THREE.Path([v(x0, y0), v(x0, y1), v(x1, y1), v(x1, y0)]));
+  }
+  const g = new THREE.ExtrudeGeometry(s, { depth: thick, bevelEnabled: false });
+  // shape y -> +z, extrusion -> -y; then lift so the slab spans y 0..thick
+  g.rotateX(Math.PI / 2);
+  g.translate(0, thick, 0);
+  return g;
+}
+
+/** A vertical plane facing +z whose UVs are in metres, offset so tiles line up between panels. */
+export function planeMetres(w: number, h: number, u0: number, v0: number) {
+  const g = new THREE.PlaneGeometry(w, h);
+  const uv = g.attributes.uv as THREE.BufferAttribute;
+  for (let i = 0; i < uv.count; i++) uv.setXY(i, u0 + uv.getX(i) * w, v0 + uv.getY(i) * h);
+  uv.needsUpdate = true;
+  return g;
+}

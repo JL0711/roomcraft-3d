@@ -1,16 +1,29 @@
-import { useMemo } from 'react';
+import { useEffect, useMemo } from 'react';
 import * as THREE from 'three';
 import { CURTAIN_ROD_DROP, shadeHeight } from '../catalog';
-import { boxGeo } from '../geometry';
+import { boxGeo, slabGeo } from '../geometry';
+import { SINK_Z, sinkD, sinkW } from '../runs';
+import {
+  BedModel,
+  DiningModel,
+  DoorModel,
+  FridgeModel,
+  HoodModel,
+  PlantModel,
+  RugModel,
+  SofaModel,
+  TVModel,
+  WindowModel,
+} from './furniture';
+import { ImportedModel } from './imported';
 import {
   fabricMat,
   finishMat,
-  glassMat,
   glowMat,
+  hobMat,
   kelvin,
   metalMat,
   plainMat,
-  skyMat,
   topMat,
 } from '../materials';
 import type { Item } from '../types';
@@ -84,6 +97,86 @@ function Handle({ f, z, kind, mat }: { f: Front; z: number; kind: string | undef
   );
 }
 
+const faucetCurve = new THREE.CatmullRomCurve3([
+  new THREE.Vector3(0, 0.02, 0),
+  new THREE.Vector3(0, 0.24, 0),
+  new THREE.Vector3(0, 0.32, 0.04),
+  new THREE.Vector3(0, 0.31, 0.15),
+  new THREE.Vector3(0, 0.25, 0.19),
+]);
+const faucetGeo = new THREE.TubeGeometry(faucetCurve, 32, 0.011, 10);
+
+function SinkFixture({ it }: { it: Item }) {
+  const metal = metalMat(it.p.metal);
+  const steel = useMemo(() => new THREE.MeshStandardMaterial({ color: '#e4e6e7', roughness: 0.38, metalness: 0.55, side: THREE.BackSide }), []);
+  const sw = sinkW(it);
+  const sd = sinkD(it);
+  const top = it.h + 0.03;
+  const zFaucet = SINK_Z - sd / 2 - 0.05;
+  return (
+    <group>
+      <mesh material={steel} position={[0, top - 0.1, SINK_Z]} receiveShadow>
+        <boxGeometry args={[sw - 0.004, 0.2, sd - 0.004]} />
+      </mesh>
+      <mesh material={plainMat('#8e9092', 0.4, 0.8)} position={[0, top - 0.199, SINK_Z]} rotation-x={-Math.PI / 2}>
+        <circleGeometry args={[0.025, 20]} />
+      </mesh>
+      <group position={[0, top, zFaucet]}>
+        <mesh material={metal} position-y={0.02} castShadow>
+          <cylinderGeometry args={[0.026, 0.028, 0.04, 20]} />
+        </mesh>
+        <mesh geometry={faucetGeo} material={metal} castShadow />
+        <mesh material={metal} position={[0.045, 0.1, 0]} rotation-z={-0.4} castShadow>
+          <cylinderGeometry args={[0.007, 0.007, 0.09, 8]} />
+        </mesh>
+      </group>
+    </group>
+  );
+}
+
+function HobFixture({ it }: { it: Item }) {
+  const w = Math.min(it.w - 0.1, 0.78);
+  const d = Math.min(0.52, it.d - 0.06);
+  return (
+    <mesh material={hobMat()} position={[0, it.h + 0.03 + 0.003, 0]} receiveShadow>
+      <boxGeometry args={[w, 0.006, d]} />
+    </mesh>
+  );
+}
+
+/** Free-standing worktop (islands); worktops against walls are built per run in Worktops. */
+function IslandTop({ it }: { it: Item }) {
+  const len = it.w + 0.004;
+  const depth = it.d + 0.04;
+  const sink = it.p.fixture === 'sink';
+  const sw = sinkW(it);
+  const sd = sinkD(it);
+  const geo = useMemo(() => {
+    const holes = sink ? [{ x: len / 2, y: depth / 2 + SINK_Z, w: sw, d: sd }] : [];
+    const g = slabGeo(len, depth, 0.03, holes);
+    g.translate(-len / 2, 0, -depth / 2);
+    return g;
+  }, [len, depth, sink, sw, sd]);
+  useEffect(() => () => geo.dispose(), [geo]);
+  return <mesh geometry={geo} material={topMat(it.p.top)} position-y={it.h} castShadow receiveShadow />;
+}
+
+function OvenFront({ x, y0, y1, w, z }: { x: number; y0: number; y1: number; w: number; z: number }) {
+  const h = y1 - y0;
+  const glass = plainMat('#141416', 0.12, 0.2);
+  const steel = metalMat('steel');
+  return (
+    <group position={[x, y0 + h / 2, z]}>
+      <Box w={w} h={h} d={T} mat={glass} />
+      <Box w={w} h={0.08} d={T + 0.002} y={h / 2 - 0.04} mat={steel} />
+      <Box w={w * 0.55} h={h * 0.42} d={0.002} y={-0.04} z={T / 2 + 0.001} mat={plainMat('#262628', 0.05, 0.4)} shadow={false} />
+      <mesh material={steel} position={[0, h / 2 - 0.13, T / 2 + 0.03]} rotation-z={Math.PI / 2} castShadow>
+        <cylinderGeometry args={[0.009, 0.009, w * 0.8, 12]} />
+      </mesh>
+    </group>
+  );
+}
+
 /** Base, wall and tall cabinets and wardrobes, built from boxes so every size works. */
 export function CabinetModel({ it }: { it: Item }) {
   const p = it.p;
@@ -97,10 +190,13 @@ export function CabinetModel({ it }: { it: Item }) {
   const yt = y0 + it.h;
   const hc = yt - yb;
   const zDoor = it.d / 2 - T / 2;
+  const sink = kind === 'base' && p.fixture === 'sink';
+  const oven = kind === 'tall' && p.appliance === 'oven';
 
   const fronts: Front[] = [];
   const n = Math.max(1, p.doors ?? 1);
-  if (kind === 'base' && p.layout === 'drawers') {
+  let ovenSlot: [number, number] | null = null;
+  if (kind === 'base' && p.layout === 'drawers' && !sink) {
     const cols = it.w > 1.0 ? 2 : 1;
     const ratios = hc < 0.55 ? [0.5, 0.5] : [0.24, 0.33, 0.43];
     const cw = (it.w - GAP * (cols + 1)) / cols;
@@ -113,6 +209,16 @@ export function CabinetModel({ it }: { it: Item }) {
         y -= dh + GAP;
       }
     }
+  } else if (oven) {
+    // door below, built-in oven in the middle, door above
+    const o0 = Math.max(yb + 0.35, 0.82);
+    const o1 = Math.min(o0 + 0.6, yt - 0.3);
+    ovenSlot = [o0 + GAP, o1 - GAP];
+    const dw = it.w - GAP * 2;
+    const lowH = o0 - yb - GAP;
+    const upH = yt - o1 - GAP;
+    fronts.push({ x: 0, y: yb + lowH / 2, w: dw, h: lowH, orient: 'h', hx: 0, hy: o0 - 0.06, hlen: Math.min(0.32, dw * 0.55) });
+    fronts.push({ x: 0, y: yt - GAP - upH / 2, w: dw, h: upH, orient: 'h', hx: 0, hy: o1 + 0.06, hlen: Math.min(0.32, dw * 0.55) });
   } else {
     const rows = kind === 'tall' && hc > 1.6 ? [0.4, 0.6] : [1];
     const dw = (it.w - GAP * (n + 1)) / n;
@@ -138,7 +244,17 @@ export function CabinetModel({ it }: { it: Item }) {
 
   return (
     <group>
-      <Box w={it.w} h={hc} d={it.d - T} y={yb + hc / 2} z={-T / 2} mat={mat} />
+      {sink ? (
+        <group>
+          {/* open-topped carcass so the basin can drop into it */}
+          <Box w={it.w} h={Math.max(0.05, hc - 0.26)} d={it.d - T} y={yb + Math.max(0.05, hc - 0.26) / 2} z={-T / 2} mat={mat} />
+          <Box w={0.018} h={hc} d={it.d - T} x={-it.w / 2 + 0.009} y={yb + hc / 2} z={-T / 2} mat={mat} />
+          <Box w={0.018} h={hc} d={it.d - T} x={it.w / 2 - 0.009} y={yb + hc / 2} z={-T / 2} mat={mat} />
+          <Box w={it.w} h={hc} d={0.018} y={yb + hc / 2} z={-it.d / 2 + 0.009} mat={mat} />
+        </group>
+      ) : (
+        <Box w={it.w} h={hc} d={it.d - T} y={yb + hc / 2} z={-T / 2} mat={mat} />
+      )}
       {plinth > 0 && <Box w={it.w - 0.004} h={plinth} d={it.d - T - 0.06} y={plinth / 2} z={-(T + 0.06) / 2} mat={mat} />}
       {fronts.map((f, i) => (
         <group key={i}>
@@ -146,9 +262,10 @@ export function CabinetModel({ it }: { it: Item }) {
           <Handle f={f} z={zDoor} kind={p.handle} mat={metal} />
         </group>
       ))}
-      {kind === 'base' && p.top && p.top !== 'none' && (
-        <Box w={it.w + 0.004} h={0.03} d={it.d + 0.02} y={it.h + 0.015} z={it.wall === null ? 0 : 0.01} mat={topMat(p.top)} />
-      )}
+      {ovenSlot && <OvenFront x={0} y0={ovenSlot[0]} y1={ovenSlot[1]} w={it.w - GAP * 2} z={zDoor} />}
+      {kind === 'base' && p.top && p.top !== 'none' && it.wall === null && <IslandTop it={it} />}
+      {sink && <SinkFixture it={it} />}
+      {kind === 'base' && p.fixture === 'hob' && <HobFixture it={it} />}
       {kind === 'wall' && p.led && <Box w={it.w - 0.04} h={0.006} d={0.016} y={it.elev - 0.003} z={it.d / 2 - 0.05} mat={glowMat(kelvin(3000), 3)} shadow={false} />}
     </group>
   );
@@ -283,30 +400,6 @@ export function CurtainModel({ it, wallH }: { it: Item; wallH: number }) {
   );
 }
 
-export function WindowModel({ it, night }: { it: Item; night: boolean }) {
-  const fw = 0.05;
-  const zb = -it.d / 2;
-  const frame = metalMat(it.p.metal);
-  const cy = it.elev + it.h / 2;
-  const mullion = it.w > 1.2;
-  return (
-    <group>
-      <mesh material={skyMat(night)} position={[0, cy, zb + 0.004]}>
-        <planeGeometry args={[it.w - fw * 2, it.h - fw * 2]} />
-      </mesh>
-      <mesh material={glassMat()} position={[0, cy, zb + 0.03]}>
-        <planeGeometry args={[it.w - fw * 2, it.h - fw * 2]} />
-      </mesh>
-      <Box w={it.w} h={fw} d={it.d} y={it.elev + it.h - fw / 2} mat={frame} />
-      <Box w={it.w} h={fw} d={it.d} y={it.elev + fw / 2} mat={frame} />
-      <Box w={fw} h={it.h - fw * 2} d={it.d} x={-it.w / 2 + fw / 2} y={cy} mat={frame} />
-      <Box w={fw} h={it.h - fw * 2} d={it.d} x={it.w / 2 - fw / 2} y={cy} mat={frame} />
-      {mullion && <Box w={fw * 0.7} h={it.h - fw * 2} d={it.d * 0.8} y={cy} mat={frame} />}
-      <Box w={it.w + 0.1} h={0.025} d={it.d + 0.1} y={it.elev - 0.0125} z={0.05} mat={plainMat('#e9e6e0', 0.5)} />
-    </group>
-  );
-}
-
 export function ItemModel({ it, wallH, night }: { it: Item; wallH: number; night: boolean }) {
   switch (it.type) {
     case 'pendant':
@@ -317,6 +410,26 @@ export function ItemModel({ it, wallH, night }: { it: Item; wallH: number; night
       return <CurtainModel it={it} wallH={wallH} />;
     case 'window':
       return <WindowModel it={it} night={night} />;
+    case 'door':
+      return <DoorModel it={it} />;
+    case 'fridge':
+      return <FridgeModel it={it} />;
+    case 'hood':
+      return <HoodModel it={it} wallH={wallH} />;
+    case 'bed':
+      return <BedModel it={it} night={night} />;
+    case 'sofa':
+      return <SofaModel it={it} />;
+    case 'dining':
+      return <DiningModel it={it} />;
+    case 'rug':
+      return <RugModel it={it} />;
+    case 'plant':
+      return <PlantModel it={it} />;
+    case 'tv':
+      return <TVModel it={it} />;
+    case 'model':
+      return <ImportedModel it={it} />;
     default:
       return <CabinetModel it={it} />;
   }

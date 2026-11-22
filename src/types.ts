@@ -11,10 +11,20 @@ export type ItemType =
   | 'wall'
   | 'tall'
   | 'wardrobe'
+  | 'fridge'
+  | 'hood'
+  | 'bed'
+  | 'sofa'
+  | 'dining'
   | 'pendant'
   | 'ceiling'
   | 'curtain'
-  | 'window';
+  | 'rug'
+  | 'plant'
+  | 'tv'
+  | 'window'
+  | 'door'
+  | 'model';
 
 export type DoorStyle = 'flat' | 'shaker' | 'fluted';
 export type HandleStyle = 'bar' | 'knob' | 'none';
@@ -36,10 +46,19 @@ export interface ItemParams {
   shade?: ShadeStyle;
   temp?: number;
   on?: boolean;
-  // curtains
+  // curtains, beds, sofas, rugs
   fabric?: string;
   open?: number;
   sheer?: boolean;
+  // kitchen fixtures
+  fixture?: 'none' | 'sink' | 'hob';
+  appliance?: 'none' | 'oven';
+  // furniture
+  nightstands?: boolean;
+  chairs?: number;
+  // imported glTF model
+  modelId?: string;
+  modelName?: string;
 }
 
 /**
@@ -68,6 +87,7 @@ export interface Design {
   floor: string;
   wallColor: string;
   roomType: RoomType;
+  backsplash?: string;
   items: Item[];
   meta: { client: string; address: string };
 }

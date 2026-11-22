@@ -217,7 +217,27 @@ export function PlanEditor() {
         <polygon points={poly} className="room-fill" />
         <polygon points={poly} className="room-wall" strokeWidth={WALL_T} />
 
-        {design.items.map((it) => {
+        {design.items
+          .slice()
+          .sort((a, b) => (a.type === 'rug' ? -1 : 0) - (b.type === 'rug' ? -1 : 0))
+          .map((it) => {
+          if (it.type === 'door') {
+            // leaf drawn fully open, with its swing arc into the room
+            const c = Math.cos(it.rot);
+            const sn = Math.sin(it.rot);
+            const w2 = (lx: number, lz: number) => ({ x: it.x + lx * c + lz * sn, z: it.z - lx * sn + lz * c });
+            const hinge = w2(-it.w / 2, it.d / 2);
+            const closed = w2(it.w / 2, it.d / 2);
+            const open = w2(-it.w / 2, it.d / 2 + it.w);
+            const fp = footprint(it);
+            return (
+              <g key={it.id} className={`plan-door${it.id === selected ? ' on' : ''}`} onPointerDown={(e) => { e.stopPropagation(); select(it.id); }}>
+                <polygon points={fp.map((p) => `${p.x},${p.z}`).join(' ')} className="door-gap" />
+                <path d={`M${hinge.x} ${hinge.z} L${open.x} ${open.z} A${it.w} ${it.w} 0 0 ${it.rot >= 0 ? 0 : 1} ${closed.x} ${closed.z}`} />
+                <title>{nameOf(lang, CATALOG[it.type])}</title>
+              </g>
+            );
+          }
           if (CATALOG[it.type].layer === 'ceiling') {
             return (
               <circle

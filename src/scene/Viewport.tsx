@@ -1,10 +1,12 @@
 import { Grid, Html, OrbitControls } from '@react-three/drei';
-import { Canvas, useThree, type ThreeEvent } from '@react-three/fiber';
+import { Canvas, useFrame, useThree, type ThreeEvent } from '@react-three/fiber';
+import { EffectComposer, N8AO, ToneMapping } from '@react-three/postprocessing';
+import { ToneMappingMode } from 'postprocessing';
 import { useCallback, useEffect, useMemo, useRef } from 'react';
 import * as THREE from 'three';
 import { RoomEnvironment } from 'three/examples/jsm/environments/RoomEnvironment.js';
 import { bridge } from '../capture';
-import { itemSpan, itemWidth } from '../catalog';
+import { CATALOG, itemDepth, itemSpan, itemWidth } from '../catalog';
 import { bounds, centroid, mm } from '../geometry';
 import { panoEye } from '../layout';
 import { collides, place } from '../placement';
@@ -83,7 +85,7 @@ function SelectionBox({ it, wallH, warn }: { it: Item; wallH: number; warn: bool
   const [y0, y1] = itemSpan(it, wallH);
   const w = itemWidth(it) + 0.03;
   const h = y1 - y0 + 0.03;
-  const d = it.d + 0.03;
+  const d = itemDepth(it) + 0.03;
   const geo = useMemo(() => new THREE.EdgesGeometry(new THREE.BoxGeometry(w, h, d)), [w, h, d]);
   const color = warn ? '#e5484d' : '#ff7a1a';
   return (
@@ -100,6 +102,15 @@ function SelectionBox({ it, wallH, warn }: { it: Item; wallH: number; warn: bool
 }
 
 type DragState = { id: string; plane: THREE.Plane; off: THREE.Vector2; moved: boolean };
+
+/** Doors, windows and curtains vanish with their wall when the cutaway hides it. */
+function FadeWithWall({ wall, children }: { wall: number | null; children: React.ReactNode }) {
+  const ref = useRef<THREE.Group>(null!);
+  useFrame(() => {
+    if (ref.current) ref.current.visible = wall === null || (bridge.wallFade[wall] ?? 1) > 0.5;
+  });
+  return <group ref={ref}>{children}</group>;
+}
 
 function Content() {
   const design = useStore((s) => s.design);
@@ -122,11 +133,14 @@ function Content() {
     maxPolarAngle: number;
   } | null;
 
+  const setDpr = useThree((s) => s.setDpr);
   useEffect(() => {
     bridge.gl = gl;
     bridge.scene = scene;
     bridge.camera = camera;
-  }, [gl, scene, camera]);
+    bridge.setDpr = setDpr;
+    bridge.controls = controls;
+  }, [gl, scene, camera, setDpr, controls]);
 
   const ctr = useMemo(() => centroid(design.plan), [design.plan]);
   const b = useMemo(() => bounds(design.plan), [design.plan]);
@@ -246,6 +260,10 @@ function Content() {
       <hemisphereLight args={['#ffffff', '#cfc6b8', night ? 0.03 : 0.35]} />
       <Sun cx={ctr.x} cz={ctr.z} r={size / 2 + 1.5} night={night} />
       <OrbitControls makeDefault enableDamping dampingFactor={0.12} />
+      <EffectComposer multisampling={4}>
+        <N8AO aoRadius={0.45} distanceFalloff={0.6} intensity={2.4} quality="medium" halfRes />
+        <ToneMapping mode={ToneMappingMode.ACES_FILMIC} />
+      </EffectComposer>
 
       <mesh rotation-x={-Math.PI / 2} position={[ctr.x, -0.006, ctr.z]}>
         <planeGeometry args={[80, 80]} />
@@ -282,7 +300,13 @@ function Content() {
               if (!drag.current) document.body.style.cursor = '';
             }}
           >
-            <ItemModel it={it} wallH={design.wallH} night={night} />
+            {['opening', 'curtain'].includes(CATALOG[it.type].layer) ? (
+              <FadeWithWall wall={it.wall}>
+                <ItemModel it={it} wallH={design.wallH} night={night} />
+              </FadeWithWall>
+            ) : (
+              <ItemModel it={it} wallH={design.wallH} night={night} />
+            )}
           </group>
         ))}
       </group>
