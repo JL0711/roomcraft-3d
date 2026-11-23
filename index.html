@@ -3,11 +3,79 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <meta name="description" content="Three.js 室内装修设计演示：户型导入、模块化橱柜衣柜灯具窗帘、实时换材质、360° 全景、自动报价 PDF" />
     <title>RoomCraft 3D · 室内装修设计演示</title>
+    <meta name="description" content="在浏览器里画户型、生成 3D 房间，选配橱柜、衣柜、灯具和窗帘，实时改尺寸和材质，导出 360° 全景和报价 PDF。A browser-based 3D interior design configurator built with React, TypeScript and Three.js." />
+    <link rel="canonical" href="https://jl0711.github.io/roomcraft-3d/" />
+    <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+    <meta name="theme-color" content="#c4622d" />
+    <meta name="author" content="JL0711" />
+
+    <!-- Link previews (iMessage, LinkedIn, WeChat, Slack, X) -->
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="RoomCraft 3D" />
+    <meta property="og:title" content="RoomCraft 3D · 室内装修设计演示 / 3D interior design configurator" />
+    <meta property="og:description" content="Draw a floor plan, place cabinets, wardrobes, appliances and lights, change sizes and finishes live, export 360° panoramas and a quote PDF. Runs in the browser." />
+    <meta property="og:url" content="https://jl0711.github.io/roomcraft-3d/" />
+    <meta property="og:image" content="https://jl0711.github.io/roomcraft-3d/og-image.png" />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:image:alt" content="RoomCraft 3D: a kitchen with an island, cabinets and appliances rendered in the browser, next to the live quote" />
+    <meta property="og:locale" content="zh_CN" />
+    <meta property="og:locale:alternate" content="en_US" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="RoomCraft 3D · 3D interior design configurator" />
+    <meta name="twitter:description" content="Draw a floor plan, place modular cabinets and furniture, change finishes live, export 360° panoramas and a quote PDF." />
+    <meta name="twitter:image" content="https://jl0711.github.io/roomcraft-3d/og-image.png" />
+
+    <!-- Structured data for search engines and AI answer engines -->
+    <script type="application/ld+json">
+      {
+        "@context": "https://schema.org",
+        "@type": "WebApplication",
+        "name": "RoomCraft 3D",
+        "alternateName": "RoomCraft 3D 室内装修设计演示",
+        "url": "https://jl0711.github.io/roomcraft-3d/",
+        "description": "A free, browser-based 3D interior design configurator: draw a floor plan, place modular cabinets, wardrobes, kitchen appliances, furniture, lights and curtains, change sizes and finishes live, export 4K renders and 360° panoramas, and generate an itemized quotation PDF.",
+        "applicationCategory": "DesignApplication",
+        "operatingSystem": "Any",
+        "browserRequirements": "Requires JavaScript and WebGL",
+        "inLanguage": ["zh-CN", "en"],
+        "isAccessibleForFree": true,
+        "offers": { "@type": "Offer", "price": "0", "priceCurrency": "USD" },
+        "image": "https://jl0711.github.io/roomcraft-3d/og-image.png",
+        "screenshot": "https://jl0711.github.io/roomcraft-3d/og-image.png",
+        "featureList": [
+          "2D floor plan editor that builds walls, floor and ceiling in 3D, including L-shaped rooms and real door and window openings",
+          "Modular cabinets, wardrobes, kitchen appliances, furniture, lights and curtains that snap to walls and align with neighbors",
+          "Live changes to size, finish, color, door style and hardware",
+          "Merged countertops with sink cutouts and continuous backsplash tiles",
+          "About 4K renders, 360° walk-through and 2:1 equirectangular panorama export",
+          "Itemized quote with installation and GST, exported as a PDF",
+          "GLB/glTF model import and whole-scene GLB export",
+          "One-click layouts for kitchens, bedrooms and living/dining rooms",
+          "Chinese and English interface"
+        ],
+        "creator": { "@type": "Person", "name": "JL0711", "url": "https://github.com/JL0711" },
+        "sameAs": ["https://github.com/JL0711/roomcraft-3d"]
+      }
+    </script>
   </head>
   <body>
     <div id="root"></div>
+    <noscript>
+      <h1>RoomCraft 3D · 室内装修设计演示</h1>
+      <p>在浏览器里画户型、生成 3D 房间，选配橱柜、衣柜、厨房电器、家具、灯具和窗帘，实时改尺寸、材质和颜色，导出效果图、360° 全景和报价单 PDF。需要开启 JavaScript 和 WebGL。</p>
+      <p>RoomCraft 3D is a browser-based 3D interior design configurator. It needs JavaScript and WebGL. Features:</p>
+      <ul>
+        <li>Floor plan editor with any room shape, including L-shaped rooms, and real door and window openings</li>
+        <li>Modular cabinets, wardrobes, kitchen appliances, furniture, lights and curtains that snap to walls</li>
+        <li>Live changes to size, finish, color, door style and hardware</li>
+        <li>About 4K renders, 360° walk-through and panorama export</li>
+        <li>Itemized quote exported as a PDF (demo prices)</li>
+        <li>Chinese and English interface</li>
+      </ul>
+      <p><a href="https://github.com/JL0711/roomcraft-3d">Source code and README on GitHub</a></p>
+    </noscript>
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>

@@ -1,0 +1,24 @@
+# RoomCraft 3D
+
+> RoomCraft 3D is a free, browser-based 3D interior design configurator. You draw a floor plan, place modular cabinets, wardrobes, kitchen appliances, furniture, lights and curtains, change sizes and finishes live, export about-4K renders and 360° panoramas, and generate an itemized quotation PDF. It is built with React, TypeScript and Three.js and runs entirely in the browser, with no account.
+
+The interface is in Chinese by default; the "EN" button in the top bar switches it to English. Designs save automatically in the browser and can also be saved to and opened from a file. Prices in the quote are demo prices in Singapore dollars, only there to show the quoting logic.
+
+## Links
+
+- [Live demo](https://jl0711.github.io/roomcraft-3d/): opens the configurator (needs JavaScript and WebGL)
+- [Source code and README](https://github.com/JL0711/roomcraft-3d): full feature list, tech stack and implementation notes
+
+## Features
+
+- Floor plan editor: drag corners, add or remove corners, type exact wall lengths, trace over an imported floor plan image; any room shape, including L-shaped rooms; doors and windows cut real openings in the walls
+- Modular items: base, wall and tall cabinets, wardrobes, sink, cooktop, oven, range hood, fridge, bed, sofa, dining set, plants, lights, curtains, rugs, TV, doors and windows; items snap to walls, align with their neighbors, and overlaps are flagged
+- Live editing: width, height, depth, mounting height, door count, drawers, door style, finishes and custom colors, hardware, countertops, backsplash, light color temperature
+- Countertops: neighboring base cabinets on one wall merge into a single countertop with a sink cutout; backsplash tiles run continuously across cabinets
+- Output: about-4K renders, 360° walk-through, 2:1 equirectangular panorama export, whole-scene GLB export; GLB/glTF models can be imported
+- Quote: each module priced by size, finish, style, hardware and appliances; countertops, backsplash, floor and walls priced by area; installation fee and 9% GST; PDF with a render, customer details and itemized totals
+- One-click layouts for kitchens, bedrooms and living/dining rooms (rule-based today; inputs and outputs are plain JSON)
+
+## Tech stack
+
+React 19, TypeScript, Three.js r187, React Three Fiber, drei, postprocessing (N8AO ambient occlusion), zustand, jsPDF, Vite. All textures are generated at runtime with canvas; the app uses no image assets.
